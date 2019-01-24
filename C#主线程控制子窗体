@@ -1,0 +1,60 @@
+//主线程控制子窗口
+bool MSGflag = false;
+        public struct MSG
+        {
+            public IntPtr hwnd { get; set; }
+            public IntPtr lparam { get; set; }
+            public int message { get; set; }
+            public int pt_x { get; set; }
+            public int pt_y { get; set; }
+            public int time { get; set; }
+            public IntPtr wParam { get; set; }
+        }
+        [DllImport("User32")]
+        public extern static void TranslateMessage(ref MSG msg);
+        [DllImport("User32")]
+        public extern static void DispatchMessage(ref MSG msg);
+        [DllImport("User32")]
+        public extern static bool GetMessage(ref MSG msg, IntPtr hwnd, int min, int max);
+        //主线程中调用子线程
+   ParameterizedThreadStart ss = new ParameterizedThreadStart(abc);
+                    Thread aa = new Thread(ss);
+                    aa.Start("上机中···");
+                   //中间执行代码
+                    MSGflag = true;
+                    while (aa.ThreadState == ThreadState.Aborted) break;
+                    aa.DisableComObjectEagerCleanup();
+         /// <summary>
+        /// 加载图片窗口，子线程调用的方法
+        /// </summary>
+        public void abc(object settext)
+        {
+            if (threadflag) return;//threadflag为全局变量，目的为只允许该方法运行一次。
+            threadflag = true;//当该方法为被调用时threadflag为true，调用该方法的线程将占有该方法,其他线程调用此方法直接退出。
+            string mess = (string)settext;
+            LoadImageForm ss = new LoadImageForm(mess);
+            ss.StartPosition = FormStartPosition.CenterScreen;
+            ss.Show();//不进行线程阻塞
+            MSG msg = new MSG();//新建结构体变量
+            while (GetMessage(ref msg, IntPtr.Zero, 0, 0))//进行UI消息循环，目的是使得ss.Show()的窗体显示出来
+            {
+                if (MSGflag)//该变量控制窗体是否显示
+                { MSGflag = false; break; }//主线程中MSGflag为true时，退出循环，并重新置位变量MSGflag
+                TranslateMessage(ref msg);
+                DispatchMessage(ref msg);
+            }
+          ss.Close();//关闭ss窗体
+          ss.Dispose();//释放ss窗体
+          threadflag = false;//允许其他线程调用该方法，释放该方法的占用
+        }
+        
+        //子窗口创建
+        public partial class LoadImageForm : Form
+       {
+          public LoadImageForm(string settext)
+          {
+            FormBorderStyle = FormBorderStyle.None;
+            InitializeComponent();
+            label1.Text = settext;
+          }
+        }
